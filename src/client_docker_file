@@ -1,0 +1,6 @@
+FROM cq_test_image:latest
+RUN mkdir -p /codequest
+COPY config.py /codequest
+COPY client_sidecar.py /codequest
+COPY sidecar_debugger_inside.py /codequest
+ENTRYPOINT ["/bin/sh", "-c", "echo STARTED-ialmyyzmwz8 && socat -v EXEC:'python /codequest/client_sidecar.py ialmyyzmwz8 client2' EXEC:'python /codequest/sidecar_debugger_inside.py 6000'"]
