@@ -1,6 +1,0 @@
-FROM cq_test_image:latest
-RUN mkdir -p /codequest
-COPY config.py /codequest
-COPY server_sidecar.py /codequest
-COPY sidecar_debugger_inside.py /codequest
-ENTRYPOINT ["/bin/sh", "-c", "echo STARTED-ialmyyzmwz8 && socat -v EXEC:'python /codequest/server_sidecar.py ialmyyzmwz8' EXEC:'python /codequest/sidecar_debugger_inside.py 6000'"]
