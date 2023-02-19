@@ -12,10 +12,10 @@ import sys
 import config
 
 
-def connect_to_server_sidecar(game_secret, client_name):
+def connect_to_server_sidecar(game_secret, client_id, client_name):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((config.server_host_name, config.server_port))
-    message = json.dumps({"secret": game_secret, "name": client_name})
+    message = json.dumps({"secret": game_secret, "id": client_id, "name": client_name})
     client_socket.send(message.encode("utf-8"))
     return client_socket
 
@@ -66,12 +66,14 @@ def start_game_cycle(connection):
             pass
 
 
-def run(game_secret, client_name):
-    connection = connect_to_server_sidecar(game_secret, client_name)
+def run(game_secret, client_id, client_name):
+    connection = connect_to_server_sidecar(game_secret, client_id, client_name)
     start_game_cycle(connection)
     connection.close()
 
 
 if __name__ == "__main__":
-    secret, name = sys.argv[1:]
-    run(secret, name)
+    sidecar_args_file = sys.argv[-1]
+    with open(sidecar_args_file) as f:
+        args = [arg.strip() for arg in f.readlines()]
+    run(*args)

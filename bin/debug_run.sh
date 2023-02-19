@@ -17,4 +17,4 @@ docker build . -t "$TARGET_IMAGE"
 rm "${BIN_DIR}/Dockerfile"
 
 cd "$SRC_DIR" || exit
-python3 controller.py "$TARGET_IMAGE" -c "client1 $TARGET_IMAGE" -c "client2 $TARGET_IMAGE" -d
+python3 controller.py "$TARGET_IMAGE" -d -c "{\"id\": \"client1\", \"name\": \"C1 😮 !\", \"image\": \"$TARGET_IMAGE\"}" -c "{\"id\": \"client2\", \"name\": \"C2 😮 !\", \"image\": \"$TARGET_IMAGE\"}"

@@ -24,10 +24,13 @@ def raise_timeout(*_):
     raise CustomTimeout
 
 
-Client = namedtuple("Client", "connection name")
+Client = namedtuple("Client", "connection id name")
 
 
 def wait_for_game_start():
+    """
+    Blocks the program until the controller creates this file, which would mean the clients are ready.
+    """
     file_path = config.server_container_working_dir + "/GAME_STARTED"
     while not os.path.isfile(file_path):
         time.sleep(3)
@@ -43,32 +46,37 @@ def start_listening():
     return server_socket
 
 
-def accept_connections(server_socket, game_secret):
+def accept_connections(server_socket, game_secret) -> t.List[Client]:
     """
     Accepts as many incoming connections as they are since the sidecar is not supposed to know the number of players.
     But the connection needs to send the game secret otherwise will be discarded.
-    :returns: Named Tuple of clients like (connection, name)
+    :returns: List of Client objects (connection, name)
     """
-    # Tuples of (connection, name)
-    clients = []
+    # Tuples of Clients (connection, name)
+    clients: t.List[Client] = []
+
+    # Set an alarm for how long we should wait for clients
     signal.signal(signal.SIGALRM, raise_timeout)
     signal.alarm(config.wait_for_clients_time)
 
     try:
         while True:
-            # Wait until new connection
+            # Block until new connection (or alarm)
             conn, address = server_socket.accept()
-            # The first data sent should be the game secret
+            # The first data sent should contain the game secret
             message = conn.recv(config.sidecars_max_message_size).decode()
             try:
                 message = json.loads(message)
                 client_secret = message["secret"]
+                client_id = message["id"]
                 client_name = message["name"]
             except (KeyError, TypeError):
-                client_secret = client_name = None
+                # If message is not formatted properly, discard the connection.
+                client_id = client_secret = client_name = None
 
             if client_secret == game_secret:
-                clients.append(Client(conn, client_name))
+                # Seems like a legit client!
+                clients.append(Client(conn, client_id, client_name))
     except CustomTimeout:
         pass
 
@@ -80,7 +88,7 @@ def set_clients_blocking_state(clients, blocking=True):
         client.connection.setblocking(blocking)
 
 
-def accept_client_messages(clients):
+def accept_client_messages(clients: t.List[Client]):
     """
     Receives a message from each client if they have a message.
     If they don't, it will return None for that client.
@@ -89,10 +97,10 @@ def accept_client_messages(clients):
     for client in clients:
         try:
             message = client.connection.recv(config.sidecars_max_message_size)
-            responses[client.name] = json.loads(message)
+            responses[client.id] = json.loads(message)
         except (OSError, TypeError):
             # Either the client hasn't responded or their response isn't json
-            responses[client.name] = None
+            responses[client.id] = None
     return responses
 
 
@@ -129,8 +137,8 @@ def start_broadcast_cycle(clients: t.List[Client]):
             # Prioritize the targeted message over send to all
             message = message_for_clients[""] if send_to_all else None
             message = (
-                message_for_clients[client.name]
-                if client.name in message_for_clients.keys()
+                message_for_clients[client.id]
+                if client.id in message_for_clients.keys()
                 else message
             )
             wrapped_message = {"message": message, "time": turn_wait_time}
@@ -147,7 +155,12 @@ def run(game_secret):
     wait_for_game_start()
     clients: t.List[Client] = accept_connections(server_socket, game_secret)
 
-    say({"clients": [client[1] for client in clients]})
+    # Tell the server the name of the clients
+    initial_message = {
+        "clients": [{"id": client.id, "name": client.name} for client in clients]
+    }
+    say(initial_message)
+
     # From this point, the clients should be non-blocking
     set_clients_blocking_state(clients, False)
     start_broadcast_cycle(clients)

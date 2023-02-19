@@ -1,5 +1,7 @@
 import argparse
+import json
 import logging
+import os
 import secrets
 import time
 
@@ -68,6 +70,9 @@ def start_server(
         tag=server_image_name,
     )
 
+    # Remove the temp files
+    os.remove("server_docker_file")
+
     return docker_client.containers.run(
         server_image_name,
         network=network_name,
@@ -91,27 +96,36 @@ def start_client(
     docker_client,
     network_name,
     client_index,
-    client_image,
-    client_name,
+    client,
     game_secret,
     client_args=tuple(),
     sidecar_args=tuple(),
 ):
-    with open(config.client_docker_file, "w") as f:
-        f.write(f"FROM {client_image}\n")
+    with open(config.client_docker_file, "w") as docker_file:
+        docker_file.write(f"FROM {client['image']}\n")
         # Make sure the working directory exists
-        f.write(f"RUN mkdir -p {config.client_container_working_dir}\n")
+        docker_file.write(f"RUN mkdir -p {config.client_container_working_dir}\n")
         # Put the sidecar and the config file in
-        f.write(f"COPY config.py {config.client_container_working_dir}\n")
-        f.write(f"COPY client_sidecar.py {config.client_container_working_dir}\n")
+        docker_file.write(f"COPY config.py {config.client_container_working_dir}\n")
+        docker_file.write(
+            f"COPY client_sidecar.py {config.client_container_working_dir}\n"
+        )
 
         if config.debug:
-            f.write(
+            docker_file.write(
                 f"COPY sidecar_debugger_inside.py {config.client_container_working_dir}\n"
             )
 
         client_args = " ".join(list(client_args))
-        sidecar_args = " ".join([game_secret, client_name] + list(sidecar_args))
+
+        # Sidecar args might have weird stuff in them, we have to write in a file then put the file inside image
+        sidecar_args = "\n".join(
+            [game_secret, client["id"], client["name"]] + list(sidecar_args)
+        )
+        with open("_temp_sidecar_args_file", "w") as temp_file:
+            temp_file.write(sidecar_args)
+        sidecar_args_file = f"{config.client_container_working_dir}/sidecar_args"
+        docker_file.write(f"COPY _temp_sidecar_args_file {sidecar_args_file}\n")
 
         # If it's debug, connect the sidecar to IO directly
         if config.debug:
@@ -122,15 +136,15 @@ def start_client(
             )
 
         # Run the client alongside the sidecar
-        f.write(
+        docker_file.write(
             f'ENTRYPOINT ["/bin/sh", "-c", "echo STARTED-{game_secret} && '
             f"socat -v "
-            f"EXEC:'python {config.client_container_working_dir}/client_sidecar.py {sidecar_args}' "
+            f"EXEC:'python {config.client_container_working_dir}/client_sidecar.py {sidecar_args_file}' "
             f'{program_exe}"]\n'
         )
 
     # Build the image
-    client_image_name = f"cq_client_image_{client_name}_{game_secret}"
+    client_image_name = f"cq_client_image_{client['id']}_{game_secret}"
     docker_client.images.build(
         path=".",
         dockerfile=config.client_docker_file,
@@ -138,6 +152,10 @@ def start_client(
         forcerm=True,
         tag=client_image_name,
     )
+
+    # Remove the temp files
+    os.remove("_temp_sidecar_args_file")
+    os.remove("client_docker_file")
 
     return docker_client.containers.run(
         client_image_name,
@@ -153,7 +171,7 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
     """
     Runs a game between given images
     :param server_image: The game server image
-    :param clients: List of clients like [{"name": "Team A", "image": "Docker image"}, ...]
+    :param clients: List of clients like [{"id": "1235", "name": "Team A", "image": "Docker image"}, ...]
     :param server_args: List of positional arguments to be passed to the game server in the CLI.
     :param client_args: List of positional arguments to be passed to each client in the CLI.
     """
@@ -176,8 +194,7 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
                 docker_client,
                 network_name,
                 i,
-                client["image"],
-                client["name"],
+                client,
                 game_secret,
                 client_args=client_args,
             )
@@ -206,7 +223,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-c",
-        help="Pass client name and image like client_name image_name:tag",
+        help='Pass client id, name and image as json object like `{"id": ..., "name": ..., "image": "image_name:tag"}`',
         nargs="+",
         action="append",
         dest="clients",
@@ -236,13 +253,15 @@ if __name__ == "__main__":
 
     config.debug = args.debug
     try:
-        arg_clients = [
-            {"name": client[0].split()[0], "image": client[0].split()[1]}
-            for client in args.clients
-        ]
-    except IndexError:
+        arg_clients = [json.loads(client[0]) for client in args.clients]
+        # Make sure the arguments are passed as strings and that all 3 keys exist
+        for client in arg_clients:
+            client["id"] = str(client["id"])
+            client["name"] = str(client["name"])
+            client["image"] = str(client["image"])
+    except (IndexError, TypeError, KeyError):
         raise Exception(
-            "Clients are not passed correctly. Check the format ('client_name image:tag')"
+            "Clients are not passed correctly. Make sure you are sending a valid JSON with all the fields."
         )
 
     run_game(args.server_image, arg_clients, args.server_args, args.client_args)
