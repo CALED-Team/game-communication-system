@@ -136,3 +136,4 @@ dmypy.json
 bin/Dockerfile
 server_docker_file
 client_docker_file
+_temp_*

@@ -17,4 +17,19 @@ docker build . -t "$TARGET_IMAGE"
 rm "${BIN_DIR}/Dockerfile"
 
 cd "$SRC_DIR" || exit
-python3 controller.py "$TARGET_IMAGE" -d -c "{\"id\": \"client1\", \"name\": \"C1 😮 !\", \"image\": \"$TARGET_IMAGE\"}" -c "{\"id\": \"client2\", \"name\": \"C2 😮 !\", \"image\": \"$TARGET_IMAGE\"}"
+cat <<EOF > _temp_clients_file.json
+[
+  {
+    "id": "client1",
+    "name": "Client One!",
+    "image": "cq_test_image:latest"
+  },
+  {
+    "id": "client2",
+    "name": "Client Two!",
+    "image": "cq_test_image:latest"
+  }
+]
+EOF
+python3 controller.py "$TARGET_IMAGE" _temp_clients_file.json -d
+rm _temp_clients_file.json

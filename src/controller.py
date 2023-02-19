@@ -222,11 +222,8 @@ if __name__ == "__main__":
         "server_image", help="Server image name and tag e.g. image_name:latest"
     )
     parser.add_argument(
-        "-c",
-        help='Pass client id, name and image as json object like `{"id": ..., "name": ..., "image": "image_name:tag"}`',
-        nargs="+",
-        action="append",
-        dest="clients",
+        "clients_file",
+        help='JSON file containing clients information like `[{"id": ..., "name": ..., "image": "image:tag"}, ...]`',
     )
     parser.add_argument(
         "--server-arg",
@@ -252,16 +249,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config.debug = args.debug
+
+    with open(args.clients_file) as f:
+        clients = json.loads(f.read())
+
     try:
-        arg_clients = [json.loads(client[0]) for client in args.clients]
-        # Make sure the arguments are passed as strings and that all 3 keys exist
-        for client in arg_clients:
+        for client in clients:
             client["id"] = str(client["id"])
             client["name"] = str(client["name"])
             client["image"] = str(client["image"])
-    except (IndexError, TypeError, KeyError):
+    except KeyError:
         raise Exception(
-            "Clients are not passed correctly. Make sure you are sending a valid JSON with all the fields."
+            "Clients are not passed correctly. Make sure you the file has a valid JSON with all the fields."
         )
 
-    run_game(args.server_image, arg_clients, args.server_args, args.client_args)
+    run_game(args.server_image, clients, args.server_args, args.client_args)
