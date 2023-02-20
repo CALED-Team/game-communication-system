@@ -3,7 +3,7 @@
 ## Purpose
 GCS allows one server and a given number of clients to communicate using standard IO having the server and each client
 running in their own container. The communication happens with JSON messages. More about message formats and the
-communications cycle in the "Interface" section.
+communications cycle in the "Program Cycle" section.
 
 ## Full Docs
 
