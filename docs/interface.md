@@ -41,6 +41,54 @@ receive `None` as the client's message.
 6. Once the clients have responded, the same cycle repeats again from step 2 until the server says `"END"`.
 
 
+## Example
+
+Here is an example of the messages sent and received by the server and one client in the course of one game. `<` means
+that line is received and `>` means that line is a message sent out. The first line received by the server is sent
+by the GCS and that's the only message that GCS injects in.
+
+**Server**
+```shell
+# Initial message sent by GCS
+< {"clients": [{"id": "client_id", "name": "Client Name!", "image": "client_image:latest"}]}
+# Send a message to clients
+> {"client_id": "A message for this client"}
+# Define the turn timeout
+> 10
+
+# Now wait for the clients...
+
+# Clients have responded
+< {"client_id": "Message Received!"}
+# Send a message for the next turn and this time send it to all clients
+> {"": "Message for all clients!"}
+# This time the clients have half a second
+> 0.5
+
+# Wait for the clients...
+
+# Time is up. The client we are examining didn't say anything though.
+< {"client_id": null}
+# Finish the game
+> "END"
+```
+
+**One Client**
+```shell
+# First message received by the server
+< {"message": "A message for this client", "time": 10}
+# Respond
+> "Message Received!"
+
+# Now wait for the next message from the server...
+
+# Next turn
+< {"message": "Message for all clients!", "time": 0.5}
+# Don't Respond
+
+# No further messages are received as the server finished the game.
+```
+
 ## Notes
 
 - All messages should be in JSON. So even if the server/client wants to send a single string, it
