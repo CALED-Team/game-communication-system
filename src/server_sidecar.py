@@ -12,6 +12,7 @@ import sys
 import time
 import typing as t
 from collections import namedtuple
+from json import JSONDecodeError
 
 import config
 
@@ -70,7 +71,7 @@ def accept_connections(server_socket, game_secret) -> t.List[Client]:
                 client_secret = message["secret"]
                 client_id = message["id"]
                 client_name = message["name"]
-            except (KeyError, TypeError):
+            except (KeyError, TypeError, JSONDecodeError):
                 # If message is not formatted properly, discard the connection.
                 client_id = client_secret = client_name = None
 
@@ -98,7 +99,7 @@ def accept_client_messages(clients: t.List[Client]):
         try:
             message = client.connection.recv(config.sidecars_max_message_size)
             responses[client.id] = json.loads(message)
-        except (OSError, TypeError):
+        except (OSError, TypeError, JSONDecodeError):
             # Either the client hasn't responded or their response isn't json
             responses[client.id] = None
     return responses
@@ -124,12 +125,14 @@ def start_broadcast_cycle(clients: t.List[Client]):
     while True:
         # Receive what the server has to say to each client
         message_for_clients = json.loads(input())
-        # How long should we wait for clients response
-        turn_wait_time = float(input())
 
         # If the message is the game finish message just close
         if message_for_clients == config.end_game_keyword:
             return
+
+        # How long should we wait for clients response
+        turn_wait_time = float(input())
+        assert turn_wait_time > 0
 
         # Is there a send to all message?
         send_to_all = "" in message_for_clients.keys()

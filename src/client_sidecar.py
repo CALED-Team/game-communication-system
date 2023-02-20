@@ -8,6 +8,7 @@ import json
 import select
 import socket
 import sys
+from json import JSONDecodeError
 
 import config
 
@@ -35,7 +36,7 @@ def start_game_cycle(connection):
             server_message = json.loads(server_message)
             message = server_message["message"]
             turn_time = server_message["time"]
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, JSONDecodeError):
             # Well, seems like server is sending nonsense. I suppose we crash?
             raise
 
@@ -56,7 +57,7 @@ def start_game_cycle(connection):
             response = sys.stdin.readline().strip()
             try:
                 json.loads(response)
-            except TypeError:
+            except (TypeError, JSONDecodeError):
                 # Bad message, too bad.
                 pass
             else:
