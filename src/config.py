@@ -19,3 +19,6 @@ server_host_name = "cqserver"
 server_port = 5000
 
 sidecars_max_message_size = 32767  # In bytes
+
+# This can either be a float giving the limit in bytes, or a string with an identification char (b/k/m/g)
+client_memory_limit = "1g"

@@ -164,6 +164,7 @@ def start_client(
         auto_remove=not config.debug,
         detach=True,
         ports={6000: 6001 + client_index} if config.debug else None,
+        mem_limit=config.client_memory_limit,
     )
 
 
