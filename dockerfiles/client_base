@@ -1,12 +1,15 @@
-FROM python:3.10-alpine
+FROM python:3.9
 
-# Socat needs to be installed for communication with the sidecar
-RUN apk add socat
-
-# This directory needs to exist (should match config.client_container_working_dir)
+RUN apt -y update
+RUN apt -y install socat
 RUN mkdir -p /codequest
 
-# This file is basically your entrypoint - put your stuff in here
-RUN touch /codequest/run.sh
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+ADD src /codequest/src
+
+RUN echo "python /codequest/src/main.py" > /codequest/run.sh
+RUN chmod +x /codequest/run.sh
 
 CMD ["/bin/sh", "-c", "/codequest/run.sh"]

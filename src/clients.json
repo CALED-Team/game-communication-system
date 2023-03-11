@@ -1,0 +1,12 @@
+[
+    {
+      "id": "player1",
+      "name": "Amir",
+      "image": "caled-client-1"
+    },
+    {
+      "id": "player2",
+      "name": "Toosi",
+      "image": "caled-client-1"
+    }
+]
