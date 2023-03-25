@@ -181,15 +181,15 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
     network: Network = create_network(docker_client, game_secret)
     network_name = network.name
 
-    print("*******" + "Starting server...")
+    log("Starting server...")
     server_container = start_server(
         docker_client, network_name, server_image, game_secret, server_args=server_args
     )
-    print("*****" + f"Server started: {server_container.short_id}")
+    log(f"Server started: {server_container.short_id}")
 
     client_containers = []
     for i, client in enumerate(clients):
-        print("*****" + f"Starting client {client['name']}")
+        log(f"Starting client {client['name']}")
         client_containers.append(
             start_client(
                 docker_client,
@@ -200,9 +200,9 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
                 client_args=client_args,
             )
         )
-        print("*****" + f"Client started: {client_containers[-1].short_id}")
+        log(f"Client started: {client_containers[-1].short_id}")
 
-    print("*******" + "All clients started.")
+    log("All clients started.")
 
     send_game_started_signal_to_server(server_container)
 
@@ -212,7 +212,7 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
         server_container.reload()
 
     network.remove()
-    print("*******" + "The game has finished!")
+    log("The game has finished!")
 
 
 if __name__ == "__main__":
