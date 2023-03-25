@@ -203,7 +203,6 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
         log(f"Client started: {client_containers[-1].short_id}")
 
     log("All clients started.")
-
     send_game_started_signal_to_server(server_container)
 
     server_container.reload()
