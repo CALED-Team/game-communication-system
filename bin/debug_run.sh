@@ -9,8 +9,8 @@ SRC_DIR="${GCS_DIR}/src"
 DOCKERFILES_DIR="${GCS_DIR}/dockerfiles"
 BASE_DIR="$(dirname $GCS_DIR)"
 
-TARGET_IMAGE=$1
-SERVER_DIR="$BASE_DIR/$TARGET_IMAGE"
+SERVER_TARGET_IMAGE=$1
+SERVER_DIR="$BASE_DIR/$SERVER_TARGET_IMAGE"
 
 CLIENT1_TARGET_IMAGE=$2
 CLIENT1_DIR="$BASE_DIR/$CLIENT1_TARGET_IMAGE"
@@ -19,7 +19,7 @@ CLIENT2_TARGET_IMAGE=$2
 CLIENT2_DIR="$BASE_DIR/$CLIENT2_TARGET_IMAGE"
 
 cp "${DOCKERFILES_DIR}/server_base" "$SERVER_DIR/Dockerfile"
-docker build $SERVER_DIR -t "$TARGET_IMAGE"
+docker build $SERVER_DIR -t "$SERVER_TARGET_IMAGE"
 
 cp "${DOCKERFILES_DIR}/client_base" "$CLIENT1_DIR/Dockerfile"
 docker build $CLIENT1_DIR -t "$CLIENT1_TARGET_IMAGE"
@@ -42,5 +42,5 @@ cat <<EOF > _temp_clients_file.json
   }
 ]
 EOF
-python3 controller.py "$TARGET_IMAGE" _temp_clients_file.json
+python3 controller.py "$SERVER_TARGET_IMAGE" _temp_clients_file.json
 rm _temp_clients_file.json
