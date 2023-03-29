@@ -18,14 +18,17 @@ CLIENT1_DIR="$BASE_DIR/$CLIENT1_TARGET_IMAGE"
 CLIENT2_TARGET_IMAGE=$2
 CLIENT2_DIR="$BASE_DIR/$CLIENT2_TARGET_IMAGE"
 
-cp "${DOCKERFILES_DIR}/server_base" "$SERVER_DIR/Dockerfile"
-docker build $SERVER_DIR -t "$SERVER_TARGET_IMAGE"
+cd "$SERVER_DIR" || exit
+cp "${DOCKERFILES_DIR}/server_base" "Dockerfile"
+docker build . -t "$SERVER_TARGET_IMAGE"
 
-cp "${DOCKERFILES_DIR}/client_base" "$CLIENT1_DIR/Dockerfile"
-docker build $CLIENT1_DIR -t "$CLIENT1_TARGET_IMAGE"
+cd "$CLIENT1_DIR" || exit
+cp "${DOCKERFILES_DIR}/client_base" "Dockerfile"
+docker build . -t "$CLIENT1_TARGET_IMAGE"
 
-cp "${DOCKERFILES_DIR}/client_base" "$CLIENT2_DIR/Dockerfile"
-docker build $CLIENT2_DIR -t "$CLIENT2_TARGET_IMAGE"
+cd "$CLIENT2_DIR" || exit
+cp "${DOCKERFILES_DIR}/client_base" "Dockerfile"
+docker build . -t "$CLIENT2_TARGET_IMAGE"
 
 cd "$SRC_DIR" || exit
 cat <<EOF > _temp_clients_file.json
