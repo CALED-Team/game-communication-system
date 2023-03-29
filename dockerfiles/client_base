@@ -1,7 +1,8 @@
-FROM python:3.9
+FROM python:3.9-alpine
 
-RUN apt -y update
-RUN apt -y install socat
+# Socat needs to be installed for communication with the sidecar
+RUN apk add socat
+
 RUN mkdir -p /codequest
 
 COPY requirements.txt .
