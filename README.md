@@ -21,6 +21,9 @@ have two clients their ports would be 6001 and 6002. Using this script you can e
 you have connected to or listen to its next message (write `listen`).
 
 Check out the `bin/debug_run.sh` file. This file runs the server with two clients, all using the same image.
+```
+bin/debug_run.sh <<cq-server>> <<cq-client1>> <<cq-client2>>
+```
 
 ## Limits
 - The maximum message size that the clients and the server can send to each other is 32kb. If they send larger messages
