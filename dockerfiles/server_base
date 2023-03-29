@@ -1,7 +1,7 @@
-FROM python:3.9
+FROM python:3.9-slim-bullseye
 
 RUN apt -y update
-RUN apt -y install socat libsdl2-2.0-0
+RUN apt -y install gcc socat libsdl2-2.0-0
 RUN mkdir -p /codequest
 
 COPY requirements.txt .
