@@ -8,13 +8,16 @@ BIN_DIR="${BASE_DIR}/bin"
 SRC_DIR="${BASE_DIR}/src"
 DOCKERFILES_DIR="${BASE_DIR}/dockerfiles"
 
-TARGET_IMAGE="cq_test_image:latest"
+TARGET_IMAGE="game-server-23"
+CLIENT_TARGET_IMAGE="game-client-23"
 
-cp "${DOCKERFILES_DIR}/server_base" "${BIN_DIR}/Dockerfile"
-
+cp "${DOCKERFILES_DIR}/server_base" "$(dirname $BASE_DIR)/game-server-23/Dockerfile"
 cd "$BIN_DIR" || exit
-docker build . -t "$TARGET_IMAGE"
-rm "${BIN_DIR}/Dockerfile"
+docker build $(dirname $BASE_DIR)/game-server-23 -t "$TARGET_IMAGE"
+
+cp "${DOCKERFILES_DIR}/client_base" "$(dirname $BASE_DIR)/game-client-23/Dockerfile"
+cd "$BIN_DIR" || exit
+docker build $(dirname $BASE_DIR)/game-client-23 -t "$CLIENT_TARGET_IMAGE"
 
 cd "$SRC_DIR" || exit
 cat <<EOF > _temp_clients_file.json
@@ -22,14 +25,14 @@ cat <<EOF > _temp_clients_file.json
   {
     "id": "client1",
     "name": "Client One!",
-    "image": "cq_test_image:latest"
+    "image": "$CLIENT_TARGET_IMAGE"
   },
   {
     "id": "client2",
     "name": "Client Two!",
-    "image": "cq_test_image:latest"
+    "image": "$CLIENT_TARGET_IMAGE"
   }
 ]
 EOF
-python3 controller.py "$TARGET_IMAGE" _temp_clients_file.json -d
+python3 controller.py "$TARGET_IMAGE" _temp_clients_file.json
 rm _temp_clients_file.json

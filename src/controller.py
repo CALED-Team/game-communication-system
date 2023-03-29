@@ -10,8 +10,12 @@ from docker.models.containers import Container
 from docker.models.networks import Network
 
 import config
+import sys
+
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+logger.setLevel(logging.INFO) 
 log = logger.info
 
 
