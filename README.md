@@ -22,6 +22,33 @@ you have connected to or listen to its next message (write `listen`).
 
 Check out the `bin/debug_run.sh` file. This file runs the server with two clients, all using the same image.
 
+So if you wanted to run GCS in debug mode with one server and two clients you would need to open 4 terminals, each with
+one of these commands:
+
+Run the GCS and containers:
+```shell
+./bin/debug_run.sh
+```
+
+Connect to the server container:
+```shell
+python src/sidecar_debugger_outside.py 6000
+```
+
+Connect to the first client container:
+```shell
+python src/sidecar_debugger_outside.py 6001
+```
+
+Connect to the second client container:
+```shell
+python src/sidecar_debugger_outside.py 6002
+```
+
+Then each terminal will expect you to be the program. Enter `listen` to get any incoming messages and enter your command
+as what you want "the program" to print. The debug run is useful for debugging and developing the GCS not for debugging
+the game server or clients.
+
 ## Limits
 - The maximum message size that the clients and the server can send to each other is 32kb. If they send larger messages
 the other end will only receive the first 32kb of it and will most likely break.
