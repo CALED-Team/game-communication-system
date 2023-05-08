@@ -3,15 +3,19 @@ import json
 import logging
 import os
 import secrets
+import sys
 import time
 
 import docker
+from docker.errors import NotFound
 from docker.models.containers import Container
 from docker.models.networks import Network
 
 import config
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+logger.setLevel(logging.INFO)
 log = logger.info
 
 
@@ -73,6 +77,11 @@ def start_server(
     # Remove the temp files
     os.remove("server_docker_file")
 
+    try:
+        docker_client.volumes.get("replay")
+    except NotFound:
+        docker_client.volumes.create(name="replay")
+
     return docker_client.containers.run(
         server_image_name,
         network=network_name,
@@ -81,6 +90,7 @@ def start_server(
         ports={6000: 6000} if config.debug else None,
         auto_remove=not config.debug,
         detach=True,
+        volumes={"replay": {"bind": "/codequest/replay", "mode": "rw"}},
     )
 
 
