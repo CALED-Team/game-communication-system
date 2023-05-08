@@ -78,9 +78,12 @@ def start_server(
     os.remove("server_docker_file")
 
     try:
-        docker_client.volumes.get("cq-game-replay")
+        volume = docker_client.volumes.get("cq-game-replay")
+        volume.remove(force=True)
     except NotFound:
-        docker_client.volumes.create(name="cq-game-replay")
+        pass
+
+    docker_client.volumes.create(name="cq-game-replay")
 
     return docker_client.containers.run(
         server_image_name,
@@ -90,7 +93,7 @@ def start_server(
         ports={6000: 6000} if config.debug else None,
         auto_remove=not config.debug,
         detach=True,
-        volumes={"replay": {"bind": "/codequest/replay", "mode": "rw"}},
+        volumes={"cq-game-replay": {"bind": "/codequest/replay", "mode": "rw"}},
     )
 
 
