@@ -221,7 +221,10 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
     server_container.reload()
     while server_container.status == "running":
         time.sleep(config.check_game_has_finished_interval)
-        server_container.reload()
+        try:
+            server_container.reload()
+        except NotFound:
+            break
 
     network.remove()
     log("The game has finished!")
