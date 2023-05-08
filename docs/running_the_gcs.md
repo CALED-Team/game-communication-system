@@ -1,12 +1,13 @@
 # Running The GCS
 
-The main entrypoint for GCS is the `src/controller.py` file which can be run like any Python script.
+The main entrypoint for GCS is the `src/controller.py` file which can be run like any Python script (you need to be in
+`src` directory).
 
 ## How to Run
 The starting point of GCS is `controller.py`. Here's a sample command to run the server with two clients:
 
 ```shell
-python src/controller.py server_image_name:tag clients.json --server-arg map3
+python controller.py server_image_name:tag clients.json --server-arg map3
 ```
 
 This example will tell GCS to use the `server_image_name:tag` as the base image for server and read the clients' info
