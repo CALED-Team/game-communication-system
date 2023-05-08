@@ -78,9 +78,9 @@ def start_server(
     os.remove("server_docker_file")
 
     try:
-        docker_client.volumes.get("replay")
+        docker_client.volumes.get("cq-game-replay")
     except NotFound:
-        docker_client.volumes.create(name="replay")
+        docker_client.volumes.create(name="cq-game-replay")
 
     return docker_client.containers.run(
         server_image_name,
