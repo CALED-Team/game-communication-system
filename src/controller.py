@@ -247,14 +247,14 @@ if __name__ == "__main__":
         help="Positional arguments to be passed to the server",
         action="append",
         dest="server_args",
-        default=tuple(),
+        default=list(),
     )
     parser.add_argument(
         "--client-arg",
         help="Positional arguments to be passed to the clients",
         action="append",
         dest="client_args",
-        default=tuple(),
+        default=list(),
     )
     parser.add_argument(
         "-d",
