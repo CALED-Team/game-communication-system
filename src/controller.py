@@ -76,7 +76,7 @@ def start_server(
 
     # Build the image
     server_image_name = f"cq_server_image_{game_secret}"
-    docker_client.images.build(
+    server_image_object = docker_client.images.build(
         path=".",
         dockerfile=config.server_docker_file,
         rm=True,
@@ -89,15 +89,18 @@ def start_server(
 
     ensure_empty_volume_exists(docker_client, "cq-game-replay")
 
-    return docker_client.containers.run(
-        server_image_name,
-        network=network_name,
-        name=f"cq_server_{game_secret}",
-        hostname=config.server_host_name,
-        ports={6000: 6000} if config.debug else None,
-        auto_remove=False,
-        detach=True,
-        volumes={"cq-game-replay": {"bind": "/codequest/replay", "mode": "rw"}},
+    return (
+        docker_client.containers.run(
+            server_image_name,
+            network=network_name,
+            name=f"cq_server_{game_secret}",
+            hostname=config.server_host_name,
+            ports={6000: 6000} if config.debug else None,
+            auto_remove=False,
+            detach=True,
+            volumes={"cq-game-replay": {"bind": "/codequest/replay", "mode": "rw"}},
+        ),
+        server_image_object,
     )
 
 
@@ -162,7 +165,7 @@ def start_client(
 
     # Build the image
     client_image_name = f"cq_client_image_{client['id']}_{game_secret}"
-    docker_client.images.build(
+    client_image_object = docker_client.images.build(
         path=".",
         dockerfile=config.client_docker_file,
         rm=True,
@@ -174,14 +177,17 @@ def start_client(
     os.remove("_temp_sidecar_args_file")
     os.remove("client_docker_file")
 
-    return docker_client.containers.run(
-        client_image_name,
-        name=f"cq_client_{str(client_index)}_{game_secret}",
-        network=network_name,
-        auto_remove=False,
-        detach=True,
-        ports={6000: 6001 + client_index} if config.debug else None,
-        mem_limit=config.client_memory_limit,
+    return (
+        docker_client.containers.run(
+            client_image_name,
+            name=f"cq_client_{str(client_index)}_{game_secret}",
+            network=network_name,
+            auto_remove=False,
+            detach=True,
+            ports={6000: 6001 + client_index} if config.debug else None,
+            mem_limit=config.client_memory_limit,
+        ),
+        client_image_object,
     )
 
 
@@ -208,6 +214,11 @@ def write_logs_and_remove_containers(folder_path, *containers):
             log(repr(e))
 
 
+def remove_images(docker_client, *images):
+    for image in images:
+        docker_client.images.remove(image.id, force=True)
+
+
 def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple()):
     """
     Runs a game between given images
@@ -222,24 +233,27 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
     network_name = network.name
 
     log("Starting server...")
-    server_container = start_server(
+    server_container, server_image = start_server(
         docker_client, network_name, server_image, game_secret, server_args=server_args
     )
     log(f"Server started: {server_container.short_id}")
 
     client_containers = []
+    client_images = []
     for i, client in enumerate(clients):
         log(f"Starting client {client['name']}")
-        client_containers.append(
-            start_client(
-                docker_client,
-                network_name,
-                i,
-                client,
-                game_secret,
-                client_args=client_args,
-            )
+
+        client_container, client_image = start_client(
+            docker_client,
+            network_name,
+            i,
+            client,
+            game_secret,
+            client_args=client_args,
         )
+
+        client_containers.append(client_container)
+        client_images.append(client_image)
         log(f"Client started: {client_containers[-1].short_id}")
 
     log("All clients started.")
@@ -257,6 +271,7 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
     write_logs_and_remove_containers(
         "container_logs", server_container, *client_containers
     )
+    remove_images(docker_client, server_image, *client_images)
     network.remove()
     log("The game has finished!")
 
