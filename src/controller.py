@@ -82,7 +82,7 @@ def start_server(
         rm=True,
         forcerm=True,
         tag=server_image_name,
-    )
+    )[0]
 
     # Remove the temp files
     os.remove("server_docker_file")
@@ -171,7 +171,7 @@ def start_client(
         rm=True,
         forcerm=True,
         tag=client_image_name,
-    )
+    )[0]
 
     # Remove the temp files
     os.remove("_temp_sidecar_args_file")
