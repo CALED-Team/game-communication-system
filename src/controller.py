@@ -7,7 +7,7 @@ import sys
 import time
 
 import docker
-from docker.errors import NotFound
+from docker.errors import APIError, NotFound
 from docker.models.containers import Container
 from docker.models.networks import Network
 
@@ -22,6 +22,16 @@ log = logger.info
 def create_network(docker_client, game_secret):
     network_name = f"cq_network_{game_secret}"
     return docker_client.networks.create(network_name)
+
+
+def ensure_empty_volume_exists(docker_client, volume_name):
+    try:
+        volume = docker_client.volumes.get(volume_name)
+        volume.remove(force=True)
+    except NotFound:
+        pass
+
+    docker_client.volumes.create(name=volume_name)
 
 
 def start_server(
@@ -77,13 +87,7 @@ def start_server(
     # Remove the temp files
     os.remove("server_docker_file")
 
-    try:
-        volume = docker_client.volumes.get("cq-game-replay")
-        volume.remove(force=True)
-    except NotFound:
-        pass
-
-    docker_client.volumes.create(name="cq-game-replay")
+    ensure_empty_volume_exists(docker_client, "cq-game-replay")
 
     return docker_client.containers.run(
         server_image_name,
@@ -91,7 +95,7 @@ def start_server(
         name=f"cq_server_{game_secret}",
         hostname=config.server_host_name,
         ports={6000: 6000} if config.debug else None,
-        auto_remove=not config.debug,
+        auto_remove=False,
         detach=True,
         volumes={"cq-game-replay": {"bind": "/codequest/replay", "mode": "rw"}},
     )
@@ -174,11 +178,34 @@ def start_client(
         client_image_name,
         name=f"cq_client_{str(client_index)}_{game_secret}",
         network=network_name,
-        auto_remove=not config.debug,
+        auto_remove=False,
         detach=True,
         ports={6000: 6001 + client_index} if config.debug else None,
         mem_limit=config.client_memory_limit,
     )
+
+
+def write_logs_and_remove_containers(folder_path, *containers):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    else:
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+
+    for container in containers:
+        with open(os.path.join(folder_path, container.name), "w") as f:
+            try:
+                f.write(container.logs().decode("utf-8"))
+            except APIError as e:
+                log(f"Failed to save container logs: {container.name}")
+                log(repr(e))
+        try:
+            container.remove(force=True)
+        except APIError as e:
+            log(f"Failed to remove the container: {container.name}")
+            log(repr(e))
 
 
 def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple()):
@@ -216,16 +243,20 @@ def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple(
         log(f"Client started: {client_containers[-1].short_id}")
 
     log("All clients started.")
-    send_game_started_signal_to_server(server_container)
-
-    server_container.reload()
-    while server_container.status == "running":
-        time.sleep(config.check_game_has_finished_interval)
-        try:
+    try:
+        send_game_started_signal_to_server(server_container)
+    except APIError as e:
+        log("Game server crashed! Please check the logs.")
+        log(e)
+    else:
+        server_container.reload()
+        while server_container.status == "running":
+            time.sleep(config.check_game_has_finished_interval)
             server_container.reload()
-        except NotFound:
-            break
 
+    write_logs_and_remove_containers(
+        "container_logs", server_container, *client_containers
+    )
     network.remove()
     log("The game has finished!")
 
