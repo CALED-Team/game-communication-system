@@ -9,10 +9,22 @@ clients have connected (or have timed out) and that the game should start now. T
 {"clients": [{"id": "client1", "name": "Client One!"}, {"id": "client2", "name": "Client Two!"}]}
 ```
 
-2. Once the server has read the clients' information, it can start the main cycle. The main cycle is basically a number
-back and forth messages between the server and the clients where the server sends a message and awaits the clients'
-response. The server can send different messages to different clients or send the same message to all clients. In order
-to send different messages to different clients, the server's first printed output should be:
+2. After the server has read the clients' information, it will send some initialization messages to all clients. These
+messages are supposed to send some basic info about the game (as opposed to that turn) to all clients so they can do
+some preprocessing if they need. An example of what the game server could send here is the map of the game. Since these
+messages are supposed to be sent to all clients, you don't need to specify the receiver here. You just print the message
+(it should still be a JSON message) and all clients will receive that message.
+```json
+{"map_objects": [{"type": "wall", "location": [1, 2]}, {"type": "wall", "location": [2, 2]}]}
+```
+
+3. Once all init messages are sent, the server should send a message `"END_INIT"` so the clients would know the game
+cycle is started now. The keyword `"END_INIT"` is defined in `src/config.py`.
+
+4. Now that the game server has read the clients' information and has sent the initializing messages, it can start the
+main cycle. The main cycle is basically a number back and forth messages between the server and the clients where the 
+server sends a message and awaits the clients' response. The server can send different messages to different clients 
+or send the same message to all clients. In order to send different messages to different clients, it should print:
 ```json
 {"client1": "Message for Client 1", "client2": "Message for Client 2"}
 ```
@@ -23,11 +35,11 @@ pass the key as empty string:
 {"": "Same message for all clients."}
 ```
 
-3. The above message would be the first part of the repeated cycle. After that message, the server should specify how
+5. The above message would be the first part of the repeated cycle. After that message, the server should specify how
 long it would like to wait for the clients to respond. The server has to specify this number every turn and it does not
 need to be the same number. The unit of this wait time is seconds and the given number can be smaller than 1. If the
 server passes a number <= 0 the game will crash.
-4. Once these two messages have been printed by the server, each client will receive a message like this:
+6. Once these two messages have been printed by the server, each client will receive a message like this:
 
 ```json
 {"message": "Message for this client", "time": 0.5}
@@ -35,10 +47,10 @@ server passes a number <= 0 the game will crash.
 
 This tells the client that they have 0.5 seconds to respond to the sent message.
 
-5. Now it's the clients' turn to respond. Each client should print exactly one line in their standard output. If they
+6. Now it's the clients' turn to respond. Each client should print exactly one line in their standard output. If they
 print their response too late (after the specified timeout time) the message will be discarded and the server will
 receive `None` as the client's message.
-6. Once the clients have responded, the same cycle repeats again from step 2 until the server says `"END"`.
+7. Once the clients have responded, the same cycle repeats again from step 2 until the server says `"END"`.
 
 
 ## Example
@@ -51,7 +63,13 @@ by the GCS and that's the only message that GCS injects in.
 ```shell
 # Initial message sent by GCS
 < {"clients": [{"id": "client_id", "name": "Client Name!", "image": "client_image:latest"}]}
-# Send a message to clients
+# The first initialize-world message sent by the server
+> {"map": [[1,1,1],[1,0,1],[1,1,1]]}
+# The second initialize-world message sent by the server
+> {"tanks": [{"name": "tank one"}, {"name": "tank two"}]}
+# The end of the initialize-world sequence
+> "END_INIT"
+# Send a message to clients for the first turn
 > {"client_id": "A message for this client"}
 # Define the turn timeout
 > 10
@@ -75,7 +93,14 @@ by the GCS and that's the only message that GCS injects in.
 
 **One Client**
 ```shell
-# First message received by the server
+# The first initializing message received:
+< {"map": [[1,1,1],[1,0,1],[1,1,1]]}
+# The second initialize-world message received:
+< {"tanks": [{"name": "tank one"}, {"name": "tank two"}]}
+# The signal for the end of the init messages is received
+< "END_INIT"
+
+# First turn's message received
 < {"message": "A message for this client", "time": 10}
 # Respond
 > "Message Received!"
@@ -98,3 +123,4 @@ same logic, if you want to send a number, you shouldn't quote it in "" because `
 
 - "One message" in this context means one line of standard output. So make sure your JSON messages
 are printed in a single line not across multiple lines otherwise GCS has to assume they are separate messages.
+Be mindful that you can't print more than 8100 characters in one line otherwise the message will be broken.

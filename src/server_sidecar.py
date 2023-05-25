@@ -121,6 +121,24 @@ def say(thing):
     print(json.dumps(thing))
 
 
+def send_init_messages(clients: t.List[Client]):
+    """
+    Before the main game loop begins, the game has a chance to send some initialize-world messages. Send as many
+    messages as the game wants, followed by an end sequence signal.
+    """
+    while True:
+        # Receive what the server has to say to all clients
+        message_for_clients = json.loads(input())
+
+        for client in clients:
+            wrapped_message = {"message": message_for_clients}
+            client.connection.send(json.dumps(wrapped_message).encode("utf-8"))
+
+        # If the message is the end of the init messages then exit
+        if message_for_clients == config.end_init_keyword:
+            return
+
+
 def start_broadcast_cycle(clients: t.List[Client]):
     while True:
         # Receive what the server has to say to each client
@@ -166,6 +184,7 @@ def run(game_secret):
 
     # From this point, the clients should be non-blocking
     set_clients_blocking_state(clients, False)
+    send_init_messages(clients)
     start_broadcast_cycle(clients)
     close_clients(clients)
 

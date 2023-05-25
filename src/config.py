@@ -11,6 +11,11 @@ end_game_keyword = (
     "END"  # The game sends this to its sidecar or server sidecar sends it to the client
 )
 
+# The game sends this when it's the end of the world initialize messages. If the game server does not want to
+# send any init messages, it should still send the end message so the sidecar would know.
+end_init_keyword = "END_INIT"
+
+
 wait_for_clients_time = (
     10  # How long should the server sidecar wait for clients initially (in seconds)
 )

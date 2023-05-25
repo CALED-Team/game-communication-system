@@ -29,6 +29,29 @@ def say(thing):
     print(json.dumps(thing), flush=True)
 
 
+def receive_init_messages(connection):
+    """
+    Before we go to the main game cycle, the game server could need to send multiple messages as "initialize world"
+    messages. This can be sending the map data, clients data, etc. This function handles that init process. The client
+    won't send any messages, it will just read all server messages until it says it's done.
+    """
+    while True:
+        server_message = connection.recv(config.sidecars_max_message_size).decode()
+        try:
+            server_message = json.loads(server_message)
+            message = server_message["message"]
+        except (KeyError, TypeError, JSONDecodeError):
+            # Well, seems like server is sending nonsense. I suppose we crash?
+            raise
+
+        if message == config.end_init_keyword:
+            # No more initialize-world messages
+            say(config.end_init_keyword)
+            return
+
+        say(message)
+
+
 def start_game_cycle(connection):
     while True:
         server_message = connection.recv(config.sidecars_max_message_size).decode()
@@ -69,6 +92,7 @@ def start_game_cycle(connection):
 
 def run(game_secret, client_id, client_name):
     connection = connect_to_server_sidecar(game_secret, client_id, client_name)
+    receive_init_messages(connection)
     start_game_cycle(connection)
     connection.close()
 
