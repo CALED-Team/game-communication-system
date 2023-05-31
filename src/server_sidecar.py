@@ -110,6 +110,7 @@ def close_clients(clients):
         client.connection.send(
             json.dumps({"message": config.end_game_keyword, "time": 0}).encode("utf-8")
         )
+        time.sleep(0.5)
         client.connection.close()
 
 
