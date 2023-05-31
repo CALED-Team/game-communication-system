@@ -7,7 +7,7 @@ import sys
 import time
 
 import docker
-from docker.errors import APIError, NotFound
+from docker.errors import APIError, ImageNotFound, NotFound
 from docker.models.containers import Container
 from docker.models.networks import Network
 
@@ -216,7 +216,10 @@ def write_logs_and_remove_containers(folder_path, *containers):
 
 def remove_images(docker_client, *images):
     for image in images:
-        docker_client.images.remove(image.id, force=True)
+        try:
+            docker_client.images.remove(image.id, force=True)
+        except ImageNotFound:
+            pass
 
 
 def run_game(server_image: str, clients, server_args=tuple(), client_args=tuple()):
