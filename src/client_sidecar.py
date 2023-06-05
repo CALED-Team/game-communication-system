@@ -50,6 +50,7 @@ def start_game_cycle(connection):
 
         if message == config.end_game_keyword:
             # Game finished!
+            say(config.end_game_keyword)
             return
 
         # Flush any prints from previous turn
