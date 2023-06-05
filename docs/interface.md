@@ -9,22 +9,31 @@ clients have connected (or have timed out) and that the game should start now. T
 {"clients": [{"id": "client1", "name": "Client One!"}, {"id": "client2", "name": "Client Two!"}]}
 ```
 
-2. After the server has read the clients' information, it will send some initialization messages to all clients. These
-messages are supposed to send some basic info about the game (as opposed to that turn) to all clients so they can do
-some preprocessing if they need. An example of what the game server could send here is the map of the game. Since these
-messages are supposed to be sent to all clients, you don't need to specify the receiver here. You just print the message
-(it should still be a JSON message) and all clients will receive that message.
+2. After the server has read the clients' information, it will send some initialization messages to clients. These
+messages are supposed to send some basic info about the game (as opposed to that turn) to clients so they can do
+some preprocessing if they need. An example of what the game server could send here is the map of the game. The format
+of these messages (like all other messages) is an object where the key defines the receiver of the message and the value
+defines the message itself. If the message should go to everyone, use an empty string as the key.
+
+After each message is sent, you should also print a floating point number, denoting how much time the clients
+are given to process that message before the new message comes. Time should be in seconds.
 ```json
-{"map_objects": [{"type": "wall", "location": [1, 2]}, {"type": "wall", "location": [2, 2]}]}
+{"": {"map_objects": [{"type": "wall", "location": [1, 2]}, {"type": "wall", "location": [2, 2]}]}}
+0.5
 ```
 
 3. Once all init messages are sent, the server should send a message `"END_INIT"` so the clients would know the game
-cycle is started now. The keyword `"END_INIT"` is defined in `src/config.py`.
+cycle is started now. The keyword `"END_INIT"` is defined in `src/config.py`. You do not need to print a time after the
+end init message.
+```json
+"END_INIT"
+```
 
 4. Now that the game server has read the clients' information and has sent the initializing messages, it can start the
-main cycle. The main cycle is basically a number back and forth messages between the server and the clients where the 
+main cycle. The main cycle is basically a number of back and forth messages between the server and the clients where the 
 server sends a message and awaits the clients' response. The server can send different messages to different clients 
-or send the same message to all clients. In order to send different messages to different clients, it should print:
+or send the same message to all clients (exactly like the init messages). In order to send different messages to
+different clients, it should print:
 ```json
 {"client1": "Message for Client 1", "client2": "Message for Client 2"}
 ```
@@ -55,60 +64,70 @@ receive `None` as the client's message.
 
 ## Example
 
-Here is an example of the messages sent and received by the server and one client in the course of one game. `<` means
-that line is received and `>` means that line is a message sent out. The first line received by the server is sent
-by the GCS and that's the only message that GCS injects in.
+Here is an example of the messages sent and received by the server and one client in the course of one game. `>` means
+that line is received and `<` means that line is a message sent out. The first line received by the server is sent
+by the GCS and that's the only message that GCS injects in, in the whole process.
 
 **Server**
 ```shell
 # Initial message sent by GCS
-< {"clients": [{"id": "client_id", "name": "Client Name!", "image": "client_image:latest"}]}
-# The first initialize-world message sent by the server
-> {"map": [[1,1,1],[1,0,1],[1,1,1]]}
-# The second initialize-world message sent by the server
-> {"tanks": [{"name": "tank one"}, {"name": "tank two"}]}
+> {"clients": [{"id": "client_id", "name": "Client Name!", "image": "client_image:latest"}]}
+# The first initialize-world message sent by the server to all clients
+< {"": {"map": [[1,1,1],[1,0,1],[1,1,1]]}}
+# They are given 0.1 seconds
+< 0.1
+# The second initialize-world message sent by the server to all clients
+< {"": {"tanks": [{"name": "tank one"}, {"name": "tank two"}]}}
+# They are given 0.1 seconds
+< 0.1
+# The third initialize-world message sent by the server to clients, with different values
+< {"client-1": {"your-tank-id": "tank-1"}, "client-2": "your-tank-id": "tank-2"}
+# They are given half a second to process everything
+< 0.5
 # The end of the initialize-world sequence
-> "END_INIT"
+< "END_INIT"
 # Send a message to clients for the first turn
-> {"client_id": "A message for this client"}
+< {"client-1": "A message for this client"}
 # Define the turn timeout
-> 10
+< 10
 
 # Now wait for the clients...
 
 # Clients have responded
-< {"client_id": "Message Received!"}
+> {"client-1": "Message Received!"}
 # Send a message for the next turn and this time send it to all clients
-> {"": "Message for all clients!"}
+< {"": "Message for all clients!"}
 # This time the clients have half a second
-> 0.5
+< 0.5
 
 # Wait for the clients...
 
-# Time is up. The client we are examining didn't say anything though.
-< {"client_id": null}
+# Time is up. The client we are examining didn't say anything.
+> {"client-1": null}
 # Finish the game
-> "END"
+< "END"
 ```
 
-**One Client**
+**Client One**
 ```shell
 # The first initializing message received:
-< {"map": [[1,1,1],[1,0,1],[1,1,1]]}
+> {"message": {"map": [[1,1,1],[1,0,1],[1,1,1]]}, "time": 0.1}
 # The second initialize-world message received:
-< {"tanks": [{"name": "tank one"}, {"name": "tank two"}]}
+> {"message": {"tanks": [{"name": "tank one"}, {"name": "tank two"}]}, "time": 0.1}
+# The third initialize-world message received:
+> {"message": {"your-tank-id": "tank-1"}, "time": 0.5} 
 # The signal for the end of the init messages is received
-< "END_INIT"
+> "END_INIT"
 
 # First turn's message received
-< {"message": "A message for this client", "time": 10}
+> {"message": "A message for this client", "time": 10}
 # Respond
-> "Message Received!"
+< "Message Received!"
 
 # Now wait for the next message from the server...
 
 # Next turn
-< {"message": "Message for all clients!", "time": 0.5}
+> {"message": "Message for all clients!", "time": 0.5}
 # Don't Respond
 
 # No further messages are received as the server finished the game.

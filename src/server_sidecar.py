@@ -122,34 +122,32 @@ def say(thing):
     print(json.dumps(thing))
 
 
-def send_init_messages(clients: t.List[Client]):
-    """
-    Before the main game loop begins, the game has a chance to send some initialize-world messages. Send as many
-    messages as the game wants, followed by an end sequence signal.
-    """
-    while True:
-        # Receive what the server has to say to all clients
-        message_for_clients = json.loads(input())
-
-        for client in clients:
-            wrapped_message = {"message": message_for_clients}
-            client.connection.send(json.dumps(wrapped_message).encode("utf-8"))
-
-        # If the message is the end of the init messages then exit
-        if message_for_clients == config.end_init_keyword:
-            return
-
-
 def start_broadcast_cycle(clients: t.List[Client]):
+    # Before the back and forth comms happen, there is an init world phase where only server sends messages
+    # to clients to initialize the game. This phase will end with a special keyword. We begin with this phase.
+    init_world_phase = True
+
     while True:
         # Receive what the server has to say to each client
         message_for_clients = json.loads(input())
+
+        # If the message is ending the init world phase then let the clients know and continue to the actual game
+        if message_for_clients == config.end_init_keyword:
+            init_world_phase = False
+            for client in clients:
+                client.connection.send(
+                    json.dumps({"message": config.end_init_keyword, "time": 0}).encode(
+                        "utf-8"
+                    )
+                )
+            continue
 
         # If the message is the game finish message just close
         if message_for_clients == config.end_game_keyword:
             return
 
-        # How long should we wait for clients response
+        # How long should we wait for clients response or, if we are still in the init phase, how long do
+        # the clients have to process the info
         turn_wait_time = float(input())
         assert turn_wait_time > 0
 
@@ -168,8 +166,10 @@ def start_broadcast_cycle(clients: t.List[Client]):
 
         # Give clients processing time
         time.sleep(turn_wait_time + config.communication_delay)
-        clients_response = accept_client_messages(clients)
-        say(clients_response)
+        # If we are in the actual game comms, get the clients' response and send it to the server
+        if not init_world_phase:
+            clients_response = accept_client_messages(clients)
+            say(clients_response)
 
 
 def run(game_secret):
@@ -185,7 +185,6 @@ def run(game_secret):
 
     # From this point, the clients should be non-blocking
     set_clients_blocking_state(clients, False)
-    send_init_messages(clients)
     start_broadcast_cycle(clients)
     close_clients(clients)
 
