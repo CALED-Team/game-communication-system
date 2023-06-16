@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import secrets
+import shutil
 import sys
 import time
 
@@ -32,6 +33,22 @@ def ensure_empty_volume_exists(docker_client, volume_name):
         pass
 
     docker_client.volumes.create(name=volume_name)
+
+
+def ensure_empty_folder_exists(folder_full_path):
+    if not os.path.exists(folder_full_path):
+        # Create the folder if it doesn't exist
+        os.makedirs(folder_full_path)
+    else:
+        # Clear the contents of the folder
+        for file_name in os.listdir(folder_full_path):
+            file_path = os.path.join(folder_full_path, file_name)
+            if os.path.isfile(file_path):
+                # Delete the file
+                os.remove(file_path)
+            elif os.path.isdir(file_path):
+                # Delete the subdirectory and its contents
+                shutil.rmtree(file_path)
 
 
 def start_server(
@@ -88,6 +105,8 @@ def start_server(
     os.remove("server_docker_file")
 
     ensure_empty_volume_exists(docker_client, "cq-game-replay")
+    live_replay_folder = os.path.join(os.getcwd(), "live_replay_files")
+    ensure_empty_folder_exists(live_replay_folder)
 
     return (
         docker_client.containers.run(
@@ -98,7 +117,10 @@ def start_server(
             ports={6000: 6000} if config.debug else None,
             auto_remove=False,
             detach=True,
-            volumes={"cq-game-replay": {"bind": "/codequest/replay", "mode": "rw"}},
+            volumes={
+                "cq-game-replay": {"bind": "/codequest/replay", "mode": "rw"},
+                live_replay_folder: {"bind": "/codequest/replay", "mode": "rw"},
+            },
         ),
         server_image_object,
     )
