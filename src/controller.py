@@ -119,7 +119,7 @@ def start_server(
             detach=True,
             volumes={
                 "cq-game-replay": {"bind": "/codequest/replay", "mode": "rw"},
-                live_replay_folder: {"bind": "/codequest/replay", "mode": "rw"},
+                live_replay_folder: {"bind": "/codequest/live-replay", "mode": "rw"},
             },
         ),
         server_image_object,
