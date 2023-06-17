@@ -140,6 +140,7 @@ def start_broadcast_cycle(clients: t.List[Client]):
                         "utf-8"
                     )
                 )
+            time.sleep(config.communication_delay)
             continue
 
         # If the message is the game finish message just close
