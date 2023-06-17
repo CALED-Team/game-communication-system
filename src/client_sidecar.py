@@ -36,10 +36,15 @@ def start_game_cycle(connection):
     while True:
         server_message = connection.recv(config.sidecars_max_message_size).decode()
         try:
-            server_message = json.loads(server_message)
+            try:
+                server_message = json.loads(server_message)
+            except JSONDecodeError:
+                print("Failed to parse JSON:")
+                print(server_message)
+                raise
             message = server_message["message"]
             turn_time = server_message["time"]
-        except (KeyError, TypeError, JSONDecodeError):
+        except (KeyError, TypeError):
             # Well, seems like server is sending nonsense. I suppose we crash?
             raise
 
