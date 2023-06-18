@@ -26,7 +26,7 @@ def say(thing):
     Says "thing" to the client by printing it.
     Whatever thing is passed it will be converted to json before printing.
     """
-    print(json.dumps(thing), flush=True)
+    print(json.dumps(thing, separators=(",", ":")), flush=True)
 
 
 def start_game_cycle(connection):
